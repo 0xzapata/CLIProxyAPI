@@ -149,6 +149,25 @@ ws-auth: false
 #     models: # The models supported by the provider.
 #       - name: "moonshotai/kimi-k2:free" # The actual model name.
 #         alias: "kimi-k2" # The alias used in the API.
+#
+#   # Example: Custom OpenAI-compatible provider with Kimi K2.5 reasoning_content support
+#   # Kimi K2.5 outputs thinking/reasoning in a non-standard "reasoning_content" field
+#   # that needs special handling to be properly formatted for clients.
+#   - name: "Opencode Zen"
+#     base-url: "https://opencode.ai/zen/v1"
+#     api-key-entries:
+#       - api-key: "sk-..."
+#     models:
+#       - alias: "kimi-k2-5-free-oc"
+#         name: "kimi-k2.5-free"
+#       - alias: "glm-4.7-free-oc"
+#         name: "glm-4.7-free"
+#     # Configure handling of Kimi K2.5's non-standard reasoning_content field
+#     # This field contains the model's thinking process and needs special handling
+#     interleaved:
+#       field: "reasoning_content"
+#       format_as_content: true
+#       separator: "\n\n"
 
 # Vertex API keys (Vertex-compatible endpoints, use API key + base URL)
 # vertex-api-key:

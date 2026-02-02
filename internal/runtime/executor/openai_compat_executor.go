@@ -129,6 +129,16 @@ func (e *OpenAICompatExecutor) Execute(ctx context.Context, auth *cliproxyauth.A
 		return resp, err
 	}
 	appendAPIResponseChunk(ctx, e.cfg, body)
+
+	// Process non-standard reasoning fields (e.g., Kimi K2.5's reasoning_content)
+	if interleaved := e.getInterleavedConfig(auth); interleaved != nil && interleaved.Field != "" {
+		body = util.ProcessInterleavedReasoning(body, &util.InterleavedConfig{
+			Field:           interleaved.Field,
+			FormatAsContent: interleaved.FormatAsContent,
+			Separator:       interleaved.Separator,
+		})
+	}
+
 	reporter.publish(ctx, parseOpenAIUsage(body))
 	// Ensure we at least record the request even if upstream doesn't return usage
 	reporter.ensurePublished(ctx)
@@ -232,6 +242,16 @@ func (e *OpenAICompatExecutor) ExecuteStream(ctx context.Context, auth *cliproxy
 		scanner := bufio.NewScanner(httpResp.Body)
 		scanner.Buffer(nil, 52_428_800) // 50MB
 		var param any
+		// Get interleaved config once before the loop
+		interleaved := e.getInterleavedConfig(auth)
+		var interleavedConfig *util.InterleavedConfig
+		if interleaved != nil && interleaved.Field != "" {
+			interleavedConfig = &util.InterleavedConfig{
+				Field:           interleaved.Field,
+				FormatAsContent: interleaved.FormatAsContent,
+				Separator:       interleaved.Separator,
+			}
+		}
 		for scanner.Scan() {
 			line := scanner.Bytes()
 			appendAPIResponseChunk(ctx, e.cfg, line)
@@ -240,6 +260,10 @@ func (e *OpenAICompatExecutor) ExecuteStream(ctx context.Context, auth *cliproxy
 			}
 			if len(line) == 0 {
 				continue
+			}
+			// Process non-standard reasoning fields in streaming responses
+			if interleavedConfig != nil {
+				line = util.ProcessInterleavedReasoningStream(line, interleavedConfig)
 			}
 			// OpenAI-compatible streams are SSE: lines typically prefixed with "data: ".
 			// Pass through translator; it yields one or more chunks for the target schema.
@@ -375,6 +399,14 @@ func (e *OpenAICompatExecutor) resolveCompatConfig(auth *cliproxyauth.Auth) *con
 		}
 	}
 	return nil
+}
+
+func (e *OpenAICompatExecutor) getInterleavedConfig(auth *cliproxyauth.Auth) *config.OpenAICompatibilityInterleaved {
+	compat := e.resolveCompatConfig(auth)
+	if compat == nil {
+		return nil
+	}
+	return compat.Interleaved
 }
 
 func (e *OpenAICompatExecutor) overrideModel(payload []byte, model string) []byte {

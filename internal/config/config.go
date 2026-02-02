@@ -369,6 +369,9 @@ type OpenAICompatibility struct {
 
 	// Headers optionally adds extra HTTP headers for requests sent to this provider.
 	Headers map[string]string `yaml:"headers,omitempty" json:"headers,omitempty"`
+
+	// Interleaved configures how non-standard reasoning fields are handled.
+	Interleaved *OpenAICompatibilityInterleaved `yaml:"interleaved,omitempty" json:"interleaved,omitempty"`
 }
 
 // OpenAICompatibilityAPIKey represents an API key configuration with optional proxy setting.
@@ -388,6 +391,22 @@ type OpenAICompatibilityModel struct {
 
 	// Alias is the model name alias that clients will use to reference this model.
 	Alias string `yaml:"alias" json:"alias"`
+}
+
+// OpenAICompatibilityInterleaved configures handling of non-standard reasoning output formats.
+// For example, Kimi K2.5 uses "reasoning_content" field instead of standard OpenAI format.
+type OpenAICompatibilityInterleaved struct {
+	// Field specifies the JSON field containing reasoning content (e.g., "reasoning_content").
+	// When set, the proxy will extract and properly format this field in responses.
+	Field string `yaml:"field,omitempty" json:"field,omitempty"`
+
+	// FormatAsContent specifies whether to prepend reasoning to content with a separator.
+	// Default: true - formats as "Thinking...\n\nResponse".
+	FormatAsContent bool `yaml:"format_as_content,omitempty" json:"format_as_content,omitempty"`
+
+	// Separator is the string used to separate reasoning from content when FormatAsContent is true.
+	// Default: "\n\n".
+	Separator string `yaml:"separator,omitempty" json:"separator,omitempty"`
 }
 
 // LoadConfig reads a YAML configuration file from the given path,
